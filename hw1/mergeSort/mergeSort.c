@@ -1,154 +1,105 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <pthread.h>
-#include <sys/time.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
+#include "mergeSort.h"
 
 /* define variables for the problem */
-#define SEED  100
-#define LENGTH 7500
-#define UPPER_LIM 1000000
-#define LOWER_LIM  1
-#define NUM_THREADS 2
 
-/* define derived values from the variables */
-const int NUMBERS_PER_THREAD = LENGTH / NUM_THREADS;
-const int OFFSET = LENGTH % NUM_THREADS;
-int arr[LENGTH];
+#define CHECK_NUM 10
+#define SIZE 30000
+#define MAX_NUM 1000000
+#define MIN_NUM  1
+#define NUM_THREADS 4
 
-/* function definitions */
-int generate_random_number(unsigned int lower_limit, unsigned int upper_limit);
-void merge_sort(int arr[], int left, int right);
-void merge(int arr[], int left, int middle, int right);
-void* thread_merge_sort(void* arg);
-void merge_sections_of_array(int arr[], int number, int aggregation);
-void test_array_is_in_order(int arr[]);
-
-int main(int argc, const char * argv[]) {
-    srand(SEED);
-    struct timeval  start, end;
-    double time_spent;
-    
-    /* initialize array with random numbers */
-    for (int i = 0; i < LENGTH; i ++) {
-        arr[i] = generate_random_number(LOWER_LIM, UPPER_LIM);
-    }
-    
-    /* begin timing */
-    pthread_t threads[NUM_THREADS];
-    gettimeofday(&start, NULL);
-    
-    /* create threads */
-    for (long i = 0; i < NUM_THREADS; i ++) {
-        int rc = pthread_create(&threads[i], NULL, thread_merge_sort, (void *)i);
-        if (rc){
-            printf("ERROR; return code from pthread_create() is %d\n", rc);
-            exit(-1);
-        }
-    }
-    
-    for(long i = 0; i < NUM_THREADS; i++) {
-        pthread_join(threads[i], NULL);
-    }
-
-    merge_sections_of_array(arr, NUM_THREADS, 1);
-    
-    /* end timing */
-    gettimeofday(&end, NULL);
-    time_spent = ((double) ((double) (end.tv_usec - start.tv_usec) / 1000000 +
-                            (double) (end.tv_sec - start.tv_sec)));
-    printf("Time taken for execution: %f seconds\n", time_spent);
-    /* test to ensure that the array is in sorted order */
-    test_array_is_in_order(arr); 
-    return 0;
+double CLOCK() {
+        struct timespec t;
+        clock_gettime(CLOCK_MONOTONIC,  &t);
+        return (t.tv_sec * 1000)+(t.tv_nsec*1e-6);
 }
 
-/* generate random numbers within the specified limit */
-int generate_random_number(unsigned int lower_limit, unsigned int upper_limit) {
-    return lower_limit + (upper_limit - lower_limit) * ((double)rand() / RAND_MAX);
+
+int arr[SIZE];
+
+const int OFFSET = SIZE % NUM_THREADS;
+const int SIZE_PER_THREAD = SIZE / NUM_THREADS;
+
+int rand_gen(int LB, int UB) {
+    return LB + ((double) rand() / RAND_MAX) * (UB - LB);
 }
 
-/* merge locally sorted sections */
-void merge_sections_of_array(int arr[], int number, int aggregation) {
+// after all threads are done, merge the arrays
+void final_merge(int arr[], int number, int merge_depth) {
     for(int i = 0; i < number; i = i + 2) {
-        int left = i * (NUMBERS_PER_THREAD * aggregation);
-        int right = ((i + 2) * NUMBERS_PER_THREAD * aggregation) - 1;
-        int middle = left + (NUMBERS_PER_THREAD * aggregation) - 1;
-        if (right >= LENGTH) {
-            right = LENGTH - 1;
+
+        int left = i * (SIZE_PER_THREAD * merge_depth);
+        int right = ((i + 2) * SIZE_PER_THREAD * merge_depth) - 1;
+        int middle = left + (SIZE_PER_THREAD * merge_depth) - 1;
+
+        if (right >= SIZE) {
+            right = SIZE - 1;
         }
+
         merge(arr, left, middle, right);
     }
     if (number / 2 >= 1) {
-        merge_sections_of_array(arr, number / 2, aggregation * 2);
+        final_merge(arr, number / 2, merge_depth * 2);
     }
 }
 
-/** assigns work to each thread to perform merge sort */
-void *thread_merge_sort(void* arg)
+void print_first_k(int arr[], int k) {
+    printf("Printing first %d elements of array\n", k);
+    for (int i = 0; i < k; i++) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n");
+}
+
+// what each thread worker does
+void *pthread_worker(void* arg)
 {
     int thread_id = (long)arg;
-    int left = thread_id * (NUMBERS_PER_THREAD);
-    int right = (thread_id + 1) * (NUMBERS_PER_THREAD) - 1;
+    int left = thread_id * (SIZE_PER_THREAD);
+    int right = (thread_id + 1) * (SIZE_PER_THREAD) - 1;
     if (thread_id == NUM_THREADS - 1) {
         right += OFFSET;
     }
     int middle = left + (right - left) / 2;
     if (left < right) {
-        merge_sort(arr, left, right);
-        merge_sort(arr, left + 1, right);
+        sort(arr, left, right);
+        sort(arr, left + 1, right);
         merge(arr, left, middle, right);
     }
     return NULL;
 }
 
-/* test to ensure that the array is in sorted order */
-void test_array_is_in_order(int arr[]) {
-    int max = 0;
-    for (int i = 1; i < LENGTH; i ++) {
-        if (arr[i] >= arr[i - 1]) {
-            max = arr[i];
-        } else {
-            printf("Error. Out of order sequence: %d found\n", arr[i]);
-            return;
-        }
-    }
-    printf("Array is in sorted order\n");
-}
-
-/* perform merge sort */
-void merge_sort(int arr[], int left, int right) {
+// iterative perform merge sort
+void sort(int arr[], int left, int right) {
     if (left < right) {
-        int middle = left + (right - left) / 2;
-        merge_sort(arr, left, middle);
-        merge_sort(arr, middle + 1, right);
+        int middle = (right - left) / 2 + left;
+        sort(arr, left, middle);
+        sort(arr, middle + 1, right);
         merge(arr, left, middle, right);
     }
 }
 
-/* merge function */
+// merge two sorted chunks
 void merge(int arr[], int left, int middle, int right) {
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    int left_length = middle - left + 1;
-    int right_length = right - middle;
-    int left_array[left_length];
-    int right_array[right_length];
+    int i = 0, j = 0, k = 0;    
+    int Lsize = middle - left + 1;
+    int Rsize = right - middle;
+    int left_array[Lsize], right_array[Rsize];    
     
-    /* copy values to left array */
-    for (int i = 0; i < left_length; i ++) {
+    for (int i = 0; i < Lsize; i ++) {
         left_array[i] = arr[left + i];
     }
     
-    /* copy values to right array */
-    for (int j = 0; j < right_length; j ++) {
+    for (int j = 0; j < Rsize; j ++) {
         right_array[j] = arr[middle + 1 + j];
     }
     
-    i = 0;
-    j = 0;
-    /** chose from right and left arrays and copy */
-    while (i < left_length && j < right_length) {
+    i = 0, j = 0;    
+    while (i < Lsize && j < Rsize) {
         if (left_array[i] <= right_array[j]) {
             arr[left + k] = left_array[i];
             i ++;
@@ -159,15 +110,56 @@ void merge(int arr[], int left, int middle, int right) {
         k ++;
     }
     
-    /* copy the remaining values to the array */
-    while (i < left_length) {
+    while (i < Lsize) {
         arr[left + k] = left_array[i];
         k ++;
         i ++;
     }
-    while (j < right_length) {
+    while (j < Rsize) {
         arr[left + k] = right_array[j];
         k ++;
         j ++;
     }
 }
+
+void main(int argc, const char * argv[]) {
+    double start, finish, total;
+    
+    /* initialize array with random numbers */
+    for (int i = 0; i < SIZE; i ++) {
+        arr[i] = rand_gen(MIN_NUM, MAX_NUM);
+    }
+    printf("before sorting\n");
+    print_first_k(arr, CHECK_NUM);
+
+    /* begin timing */
+    pthread_t threads[NUM_THREADS];
+    start = CLOCK();
+    
+    /* create threads */
+    for (long i = 0; i < NUM_THREADS; i ++) {
+        int rc = pthread_create(&threads[i], NULL, pthread_worker, (void *)i);
+        if (rc){
+            printf("ERROR; return code from pthread_create() is %d\n", rc);
+            exit(-1);
+        }
+    }
+    
+    for(long i = 0; i < NUM_THREADS; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    final_merge(arr, NUM_THREADS, 1);
+    
+    /* end timing */
+    finish = CLOCK();
+    total = finish - start;
+
+    printf("after sorting\n");
+    print_first_k(arr, CHECK_NUM); 
+    printf("Time for mergesort: %4.2f milliseconds\n", total);
+    
+    return;
+}
+
+

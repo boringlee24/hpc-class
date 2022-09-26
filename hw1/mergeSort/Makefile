@@ -1,13 +1,10 @@
 target: mergeSort.c
 	gcc -lpthread mergeSort.c -o mergeSortOutput  
 
-.PHONY: clean run init
+.PHONY: clean init
 
 run:
 	./mergeSortOutput
 
-init:
-	rm mergeSortOutput 
-
 clean:
-	rm -f *.o
+	rm mergeSortOutput 

@@ -77,7 +77,7 @@ void main()
     }
 
     for(i=0; i<N; i++){
-        sem_destroy(&forks[i]); //shared by threads, init to 1 (fork available)
+        sem_destroy(&forks[i]);
     }
     return;
 }

@@ -18,7 +18,6 @@ double CLOCK() {
         return (t.tv_sec * 1000)+(t.tv_nsec*1e-6);
 }
 
-
 int arr[SIZE];
 
 const int OFFSET = SIZE % NUM_THREADS;

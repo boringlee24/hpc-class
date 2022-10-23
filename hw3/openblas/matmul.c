@@ -1,18 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+
 #define N 512        
 #define LOOPS 10        
-#define B 128
 
 double CLOCK() {
         struct timespec t;
         clock_gettime(CLOCK_MONOTONIC,  &t);
         return (t.tv_sec * 1000)+(t.tv_nsec*1e-6);
 }
-
-//optimization #1: remove repetitive loops
-//optimization #2: blocking
 
 int main()
 {
@@ -21,41 +18,26 @@ int main()
   double c[N][N]; /* result matrix */
   int i,j,k,l, num_zeros;
   double start, finish, total;
-  int jj, kk;
-  double sum;
-  int nthreads = N / B;
-  int chunk = 1;
-  int tid;
+
 
   /* initialize a dense matrix */
   for(i=0; i<N; i++){    
     for(j=0; j<N; j++){
       a[i][j] = (double)(i+j);
       b[i][j] = (double)(i-j);
-      c[i][j] = 0.0;
     }
   }
   
   printf("starting dense matrix multiply \n");
-  // en = B * 4;
   start = CLOCK();
-//  for (l=0; l<LOOPS; l++) {
-  for (kk=0; kk<N; kk+=B) 
-  {
-    for (jj=0; jj<N; jj+=B)      
-    {
-      for (i=0; i< N; i++)     
-        for (j = jj; j< jj + B; j++) {
-          sum = c[i][j];
-          for (k=kk; k< kk + B; k++) {
-            sum+= a[i][k] * b[k][j];
-          }
-          c[i][j] = sum;
-          }  
-    }      
-  }
-
-//   }
+  // for (l=0; l<LOOPS; l++) {
+    for(i=0; i<N; i++)
+      for(j=0; j<N; j++){
+        c[i][j] = 0.0;
+        for(k=0; k<N; k++)  
+          c[i][j] = c[i][j] + a[i][k] * b[k][j]; 
+       }  
+  //  }
 finish = CLOCK();
 total = finish-start;
 printf("a result %g \n", c[7][8]); /* prevent dead code elimination */
@@ -65,7 +47,6 @@ printf("The total time for matrix multiplication with dense matrices = %f ms\n",
   num_zeros = 0; 
   for(i=0; i<N; i++){    
     for(j=0; j<N; j++){
-      c[i][j] = 0.0;
       if ((i<j)&&(i%2>0))
         {
          a[i][j] = (double)(i+j);
@@ -84,16 +65,12 @@ printf("The total time for matrix multiplication with dense matrices = %f ms\n",
   printf("starting sparse matrix multiply \n");
   start = CLOCK();
   // for (l=0; l<LOOPS; l++) {
-  for (kk=0; kk<N; kk+=B) 
-    for (jj=0; jj<N; jj+=B)      
-      for (i=0; i< N; i++)     
-        for (j = jj; j< jj + B; j++) {
-          sum = c[i][j];
-          for (k=kk; k< kk + B; k++) {
-            sum+= a[i][k] * b[k][j];
-          }
-          c[i][j] = sum;
-          }  
+    for(i=0; i<N; i++)
+      for(j=0; j<N; j++){
+        c[i][j] = 0.0;
+        for(k=0; k<N; k++)
+          c[i][j] = c[i][j] + a[i][k] * b[k][j];
+      }
   // }
 finish = CLOCK();
 total = finish-start;

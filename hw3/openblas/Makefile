@@ -1,5 +1,5 @@
 target: matmul.c
-	gcc matmul.c -o matmulOut
+	gcc -lopenblas matmul.c -o matmulOut
 
 .PHONY: clean init
 

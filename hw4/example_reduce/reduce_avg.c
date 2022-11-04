@@ -15,6 +15,11 @@ float *create_rand_nums(int num_elements) {
   return rand_nums;
 }
 
+void init_array(float* arr) {
+  arr[0] = 0;
+  arr[1] = 100;
+}
+
 int main(int argc, char** argv) {
   if (argc != 2) {
     fprintf(stderr, "Usage: avg num_elements_per_proc\n");
@@ -36,30 +41,31 @@ int main(int argc, char** argv) {
   rand_nums = create_rand_nums(num_elements_per_proc);
 
   // Sum the numbers locally
-  float local_sum = 0;
+  float local_sum[2];
+  init_array(local_sum);
   int i;
   for (i = 0; i < num_elements_per_proc; i++) {
-    local_sum += rand_nums[i];
+    local_sum[0] += rand_nums[i];
+    local_sum[1] += rand_nums[i];
   }
 
   // Print the random numbers on each process
-  printf("Local sum for process %d - %f, avg = %f\n",
-         world_rank, local_sum, local_sum / num_elements_per_proc);
+  printf("Local sum for process %d - [%f, %f]\n",
+         world_rank, local_sum[0], local_sum[1]);
 
   // Reduce all of the local sums into the global sum
-  float global_sum;
-  MPI_Reduce(&local_sum, &global_sum, 1, MPI_FLOAT, MPI_SUM, 0,
+  float global_sum[2];
+  MPI_Reduce(&local_sum, &global_sum, 2, MPI_FLOAT, MPI_SUM, 0,
              MPI_COMM_WORLD);
 
   // Print the result
   if (world_rank == 0) {
-    printf("Total sum = %f, avg = %f\n", global_sum,
-           global_sum / (world_size * num_elements_per_proc));
+    printf("Total sum = [%f, %f]\n", global_sum[0], global_sum[1]);
   }
 
   // Clean up
   free(rand_nums);
 
-  MPI_Barrier(MPI_COMM_WORLD);
+  // MPI_Barrier(MPI_COMM_WORLD);
   MPI_Finalize();
 }

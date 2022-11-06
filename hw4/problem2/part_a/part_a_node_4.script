@@ -1,11 +1,12 @@
 #!/bin/bash
 #SBATCH --verbose
-#SBATCH --nodes=2
-#SBATCH --ntasks-per-node=50
+#SBATCH --nodes=4
+#SBATCH --ntasks-per-node=25
 #SBATCH --cpus-per-task=1
 #SBATCH --time=00:30:00
-#SBATCH --job-name=baolin
+#SBATCH --job-name=part_a_node4
 #SBATCH --mem=150G
 #SBATCH --partition=express
+#SBATCH --output=%x.%j.out
 $SRUN mpirun -mca btl_base_warn_component_unused 0 part_aOut
 

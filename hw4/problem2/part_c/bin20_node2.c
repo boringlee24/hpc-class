@@ -1,10 +1,18 @@
 #include "mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
-#define NUM_BIN 100
+#include <time.h>
+
+#define NUM_BIN 20
 #define NUM_DATA 2000000
 #define DATA_MAX 1000000
 // #define BIN_SIZE DATA_MAX / NUM_BIN
+
+double CLOCK() {
+        struct timespec t;
+        clock_gettime(CLOCK_MONOTONIC,  &t);
+        return (t.tv_sec * 1000)+(t.tv_nsec*1e-6);
+}
 
 void init_histo(int* histogram) {
 	int i;
@@ -34,6 +42,8 @@ int world_size;
 const int LEAD_RANK = 0;
 int num_data_per_proc = NUM_DATA / NUM_BIN;
 int histogram[NUM_BIN];
+double start, finish, reduce, total;
+
 // int rand_arr[num_data_per_proc];
 
 MPI_Init(NULL, NULL);
@@ -47,6 +57,7 @@ if (world_size != NUM_BIN) {
 
 if (world_rank == 0) {
 	printf("Number of data per process: %d\n", num_data_per_proc);
+	start = CLOCK();
 }
 
 // now generate the random data
@@ -56,16 +67,23 @@ create_rand(histogram, num_data_per_proc, world_rank);
 
 // now perform reduce
 int global_histogram[NUM_BIN];
+if (world_rank == 0) reduce = CLOCK();
 MPI_Reduce(&histogram, &global_histogram, NUM_BIN, MPI_INT, MPI_SUM, 0,
 			MPI_COMM_WORLD);
 
 // print
 if (world_rank == 0) {
+	finish = CLOCK();	
+	total = finish-start;
+
 	int i;
 	for (i = 0; i < NUM_BIN; i++)
 	{
 		printf("Number of elements in bin %d: %d\n", i, global_histogram[i]);
 	}	
+	printf("The time for local histogram generation = %f ms\n", reduce-start);	
+	printf("The time for reduction = %f ms\n", finish-reduce);		
+	printf("The total time for histogram generation = %f ms\n", total);
 }
 
 MPI_Finalize();

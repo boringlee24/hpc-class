@@ -4,7 +4,8 @@ target: part_a.c
 .PHONY: clean
 
 run:
-	./part_aOut
+	sbatch part_a_node_2.script
+	sbatch part_a_node_4.script
 
 clean:
 	rm part_aOut

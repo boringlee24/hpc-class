@@ -90,7 +90,7 @@ int main (int argc, char** argv) {
 
     finish = CLOCK();
     total = finish - start;
-    printf("The total time for histogram generation = %f ms\n", total);
+    printf("The total time for histogram generation = %4.4f ms\n", total);
 
     // Write the data out
     ofstream output_file;
